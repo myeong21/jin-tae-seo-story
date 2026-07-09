@@ -41,6 +41,12 @@ header{
     background:black;
 
     overflow:hidden;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
 }
 
 #map{
@@ -49,7 +55,9 @@ header{
 
     height:100%;
 
-    object-fit:cover;
+    object-fit:contain;
+
+    background:#000;
 }
 
 #sidebar{
@@ -65,6 +73,45 @@ header{
     flex-direction:column;
 
     gap:30px;
+}
+
+section{
+
+    border:2px solid white;
+
+    background:#252525;
+
+    padding:12px;
+}
+
+section h2{
+
+    border-bottom:1px solid #666;
+
+    margin-bottom:10px;
+
+    padding-bottom:8px;
+}
+
+section ul{
+
+    list-style:none;
+
+    padding-left:0;
+}
+
+section li{
+
+    margin:8px 0;
+}
+
+.inventory{
+
+    min-height:180px;
+
+    border:1px dashed #666;
+
+    margin-top:10px;
 }
 
 #sidebar h2{
