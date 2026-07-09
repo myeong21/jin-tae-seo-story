@@ -6,10 +6,23 @@
 
 body{
 
+    margin:0;
+
     background:#202020;
+
     color:white;
 
     font-family:Arial;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    min-height:100vh;
+
+    overflow:auto;
 }
 
 header{
@@ -23,13 +36,17 @@ header{
     align-items:center;
 
     background:#111;
+
+    border-bottom:2px solid #444;
 }
 
 #game-container{
 
     display:flex;
 
-    height:650px;
+    width:1280px;
+
+    height:540px;
 }
 
 #map-container{
@@ -77,11 +94,26 @@ header{
 
 section{
 
-    border:2px solid white;
+    border:2px solid #444;
 
     background:#252525;
 
     padding:12px;
+}
+
+#sidebar section:nth-child(1){
+
+    height:90px;
+}
+
+#sidebar section:nth-child(2){
+
+    height:220px;
+}
+
+#sidebar section:nth-child(3){
+
+    flex:1;
 }
 
 section h2{
@@ -128,13 +160,13 @@ section li{
 
 #dialogue{
 
-    height:170px;
+    height:180px;
 
     background:#111;
 
     padding:20px;
 
-    border-top:2px solid white;
+    border-top:2px solid #444;
 }
 
 #speaker{
@@ -225,4 +257,21 @@ section li{
 
     width:120px;
     height:120px;
+}
+
+#game{
+
+    width:1280px;
+
+    height:720px;
+
+    background:#1b1b1b;
+
+    display:flex;
+
+    flex-direction:column;
+
+    box-shadow:0 0 30px rgba(0,0,0,.6);
+
+    border:3px solid #444;
 }
