@@ -1,15 +1,91 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<title>진태서 스토리</title>
-</head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>진태서 스토리</title>
 
+    <link rel="stylesheet" href="style.css">
+</head>
 <body>
 
-<h1>진태서 스토리</h1>
+<header>
+    <h1>진태서 스토리 (JIN_TAE_SEO_STORY)</h1>
+</header>
 
-<p>공개 서버 테스트 성공</p>
+<div id="game-container">
+
+    <div id="map-container">
+
+        <img src="images/school.png" id="map">
+
+        <!-- 플레이어 -->
+        <div id="player"></div>
+
+        <!-- 클릭영역 -->
+        <div class="zone" id="zone1"></div>
+        <div class="zone" id="zone2"></div>
+        <div class="zone" id="zone3"></div>
+        <div class="zone" id="zone4"></div>
+
+    </div>
+
+    <aside id="sidebar">
+
+        <section>
+
+            <h2>현재 위치</h2>
+
+            <p id="location">
+                학교
+            </p>
+
+        </section>
+
+        <section>
+
+            <h2>진행도</h2>
+
+            <ul>
+                <li>?????</li>
+                <li>?????</li>
+                <li>?????</li>
+                <li>?????</li>
+            </ul>
+
+        </section>
+
+        <section>
+
+            <h2>인벤토리</h2>
+
+            <div class="inventory">
+
+            </div>
+
+        </section>
+
+    </aside>
+
+</div>
+
+<div id="dialogue">
+
+    <div id="speaker">
+
+        진태서
+
+    </div>
+
+    <div id="text">
+
+        게임을 시작하세요.
+
+    </div>
+
+</div>
+
+<script src="script.js"></script>
 
 </body>
 </html>
