@@ -58,45 +58,47 @@ header{
     display:flex;
 
     flex-direction:column;
+
+    min-height:0;
 }
 
 #map-shell{
 
     flex:1;
 
+    min-height:0;
+
     position:relative;
 
     background:black;
 
     overflow:hidden;
-
-    display:flex;
-
-    justify-content:center;
-
-    align-items:center;
 }
 
-#map-stage{
+#map-world{
 
-    position:relative;
+    position:absolute;
 
-    width:720px;
+    top:0;
 
-    height:480px;
+    left:0;
+
+    will-change:transform;
 }
 
-#map{
+#map-img{
 
-    width:100%;
+    position:absolute;
 
-    height:100%;
+    top:0;
 
-    object-fit:contain;
-
-    background:#000;
+    left:0;
 
     display:block;
+
+    pointer-events:none;
+
+    user-select:none;
 }
 
 #sidebar{
@@ -219,66 +221,65 @@ section li{
 
     border-radius:50%;
 
-    left:120px;
+    transition:.4s;
 
-    top:120px;
+    z-index:5;
 
-    transition:.5s;
+    margin-left:-9px;
+
+    margin-top:-9px;
 }
 
-.zone{
+.point{
 
     position:absolute;
 
-    border:3px solid transparent;
+    border:2px dashed rgba(0,200,255,.7);
+
+    background:rgba(0,200,255,.08);
+
+    border-radius:6px;
 
     transition:.2s;
 }
 
-.zone:hover{
+.point:hover{
 
-    border:3px solid yellow;
+    border:2px solid #00e0ff;
+
+    background:rgba(0,224,255,.2);
 
     cursor:pointer;
 }
 
+.point-travel{
 
-/* 박스 위치 */
+    border:2px dashed rgba(255,220,80,.8);
 
-#zone1{
-
-    left:120px;
-    top:120px;
-
-    width:120px;
-    height:100px;
+    background:rgba(255,220,80,.08);
 }
 
-#zone2{
+.point-travel:hover{
 
-    left:430px;
-    top:130px;
+    border:2px solid #ffdc50;
 
-    width:120px;
-    height:120px;
+    background:rgba(255,220,80,.2);
+
+    cursor:pointer;
 }
 
-#zone3{
+.point-cleared{
 
-    left:180px;
-    top:380px;
+    border:2px dashed rgba(120,120,120,.6);
 
-    width:160px;
-    height:120px;
+    background:rgba(120,120,120,.05);
 }
 
-#zone4{
+.point-cleared:hover{
 
-    left:520px;
-    top:400px;
+    border:2px solid #888;
 
-    width:120px;
-    height:120px;
+    background:rgba(120,120,120,.15);
 }
 
 #game{

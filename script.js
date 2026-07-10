@@ -1,105 +1,174 @@
 /* =========================================================
-   진태서 스토리 - 게임 로직
-   구조: 위치(zone) 데이터 + 그 안의 상호작용 포인트 데이터를
-   한 곳(GAME_DATA)에 몰아넣고, 클릭 이벤트는 이 데이터를 읽어
-   공통 로직으로 처리한다. (위치/포인트가 늘어나도 코드 반복 없음)
+   진태서 스토리 - 게임 로직 (카메라 패닝 지원 버전)
+
+   구조:
+   - #map-shell : 화면에 보이는 고정 크기 뷰포트
+   - #map-world : 실제 이미지+포인트가 놓인 큰 판. transform으로 이동시켜 카메라 구현
+   - 모든 좌표(포인트, 스폰 위치)는 이미지 기준 %(0~100)로 저장
+     -> 이미지가 세로형/가로형 등 뭐든 상관없이 항상 같은 상대 위치에 배치됨
    ========================================================= */
 
 // ---------- DOM 참조 ----------
+const mapShell = document.getElementById("map-shell");
+const mapWorld = document.getElementById("map-world");
+const mapImg = document.getElementById("map-img");
 const player = document.getElementById("player");
 const dialogue = document.getElementById("text");
-const speaker = document.getElementById("speaker");
 const locationText = document.getElementById("location");
-const mapStage = document.getElementById("map-stage");
 const inventoryBox = document.querySelector(".inventory");
 
 // ---------- 진행도(퀘스트) 데이터 ----------
-// 4개는 지금은 임시값. 언제든 늘리거나 줄이거나 이름을 바꿔도 됨.
-// cleared가 true가 되면 사이드바에 '?????' 대신 name이 표시됨.
 const progressTasks = [
-    { id: "bench_key",   name: "벤치 아래 확인", cleared: false },
-    { id: "pond_clue",   name: "연못가 흔적 조사", cleared: false },
-    { id: "locker",      name: "사물함 조사",     cleared: false },
-    { id: "front_door",  name: "본관 현관문 열기", cleared: false }
+    { id: "bench_key",  name: "벤치 아래 확인",   cleared: false },
+    { id: "pond_clue",  name: "연못가 흔적 조사", cleared: false },
+    { id: "locker",     name: "사물함 조사",       cleared: false },
+    { id: "front_door", name: "본관 현관문 열기", cleared: false }
 ];
 
 // ---------- 인벤토리 ----------
-// 아이템은 {id, name} 형태. 화면엔 name만 보여줌.
 let inventory = [];
-
 const ITEM_DB = {
     key: { id: "key", name: "낡은 열쇠" }
 };
 
-// ---------- 위치(zone) & 상호작용 포인트 데이터 ----------
-// x, y, w, h 는 map-stage 기준 절대 좌표(px). style.css의 zone 좌표와 같은 체계.
-const GAME_DATA = {
-    zone1: {
-        name: "운동장",
-        playerPos: { x: 165, y: 155 },
-        enterText: "운동장이다.",
+// ---------- 씬(장소) 데이터 ----------
+// 이미지가 바뀌는 장소(운동장/본관/교실 등)가 늘어나면 여기에 씬을 추가하면 됨.
+// xPct/yPct/wPct/hPct 전부 해당 씬 이미지 기준 0~100 퍼센트.
+const SCENES = {
+    school: {
+        image: "images/school.png",
+        spawnPct: { x: 50, y: 90 },
+
+        // 클릭하면 카메라+플레이어가 그 위치로 이동하는 '이동 지점'
+        travelPoints: [
+            { id: "zone1", name: "운동장", xPct: 33, yPct: 68, wPct: 20, hPct: 12, enterText: "운동장이다." },
+            { id: "zone2", name: "연못",   xPct: 63, yPct: 16, wPct: 16, hPct: 10, enterText: "연못이다." },
+            { id: "zone3", name: "본관",   xPct: 36, yPct: 36, wPct: 16, hPct: 10, enterText: "본관으로 들어갈 수 있을 것 같다." },
+            { id: "zone4", name: "???",    xPct: 80, yPct: 58, wPct: 18, hPct: 12, enterText: "아직 갈 수 없는 장소다." }
+        ],
+
+        // 클릭하면 대사/아이템/진행도가 갱신되는 '조사 지점'
         points: [
             {
                 id: "bench",
-                x: 205, y: 190, w: 50, h: 50,
+                xPct: 15, yPct: 12, wPct: 8, hPct: 5,
                 progressTaskId: "bench_key",
-                clearedText: "이미 확인한 벤치다.",
                 text: "벤치 아래에서 낡은 열쇠를 발견했다.",
+                clearedText: "이미 확인한 벤치다.",
                 givesItem: "key"
-            }
-        ]
-    },
-    zone2: {
-        name: "연못",
-        playerPos: { x: 475, y: 165 },
-        enterText: "연못이다.",
-        points: [
+            },
             {
                 id: "pond_edge",
-                x: 500, y: 200, w: 50, h: 50,
+                xPct: 60, yPct: 20, wPct: 8, hPct: 5,
                 progressTaskId: "pond_clue",
-                clearedText: "이미 조사한 흔적이다.",
-                text: "물가에서 이상한 발자국을 발견했다."
-            }
-        ]
-    },
-    zone3: {
-        name: "본관",
-        playerPos: { x: 240, y: 430 },
-        enterText: "본관으로 들어갈 수 있을 것 같다.",
-        points: [
+                text: "물가에서 이상한 발자국을 발견했다.",
+                clearedText: "이미 조사한 흔적이다."
+            },
             {
                 id: "locker",
-                x: 260, y: 460, w: 50, h: 50,
+                xPct: 33, yPct: 33, wPct: 8, hPct: 5,
                 progressTaskId: "locker",
-                clearedText: "이미 조사한 사물함이다.",
-                text: "사물함 안에는 별다른 게 없었다."
+                text: "사물함 안에는 별다른 게 없었다.",
+                clearedText: "이미 조사한 사물함이다."
             },
             {
                 id: "front_door",
-                x: 320, y: 460, w: 50, h: 50,
+                xPct: 40, yPct: 33, wPct: 8, hPct: 5,
                 progressTaskId: "front_door",
                 requiresItem: "key",
+                consumesItem: true,
                 lockedText: "문이 잠겨있다. 무언가 열쇠가 필요할 것 같다.",
-                clearedText: "이미 열어둔 문이다.",
                 text: "낡은 열쇠로 문을 열었다.",
-                consumesItem: true
+                clearedText: "이미 열어둔 문이다."
             }
         ]
-    },
-    zone4: {
-        name: "???",
-        playerPos: { x: 565, y: 440 },
-        enterText: "아직 갈 수 없는 장소다.",
-        points: []
     }
 };
 
-// ---------- 상태 ----------
-let currentZoneId = null;
+// ---------- 카메라/월드 상태 ----------
+let currentSceneId = "school";
+let naturalW = 0, naturalH = 0;   // 원본 이미지 픽셀 크기
+let worldW = 0, worldH = 0;       // 뷰포트를 덮도록 확대된 실제 렌더 크기
+let panX = 0, panY = 0;
 
-// ---------- 렌더링 함수 ----------
+const PAN_SPEED = 480;  // px/초 (WASD, 가장자리 스크롤 공통 속도)
+const EDGE_ZONE = 48;   // 가장자리 자동 스크롤 감지 범위(px)
 
+const keysDown = new Set();
+let mouseEdgeVec = { x: 0, y: 0 };
+let lastTime = null;
+
+// ---------- 좌표 변환 ----------
+function pctToWorldPx(xPct, yPct) {
+    return { x: worldW * (xPct / 100), y: worldH * (yPct / 100) };
+}
+
+// ---------- 씬 로딩 ----------
+function loadScene(sceneId) {
+    const scene = SCENES[sceneId];
+    currentSceneId = sceneId;
+
+    mapImg.onload = () => {
+        naturalW = mapImg.naturalWidth;
+        naturalH = mapImg.naturalHeight;
+
+        fitWorldToViewport();
+
+        const spawnPx = pctToWorldPx(scene.spawnPct.x, scene.spawnPct.y);
+        placePlayer(spawnPx.x, spawnPx.y);
+        centerCameraOn(spawnPx.x, spawnPx.y);
+
+        renderPoints();
+        setDialogue("게임을 시작하세요.");
+        locationText.innerHTML = "학교";
+    };
+    mapImg.src = scene.image;
+}
+
+// 뷰포트를 여백 없이 채우도록 이미지를 확대(cover)
+function fitWorldToViewport() {
+    const vw = mapShell.clientWidth;
+    const vh = mapShell.clientHeight;
+    const scale = Math.max(vw / naturalW, vh / naturalH);
+
+    worldW = naturalW * scale;
+    worldH = naturalH * scale;
+
+    mapWorld.style.width = worldW + "px";
+    mapWorld.style.height = worldH + "px";
+    mapImg.style.width = worldW + "px";
+    mapImg.style.height = worldH + "px";
+}
+
+// ---------- 카메라(패닝) ----------
+function clampPan() {
+    const vw = mapShell.clientWidth;
+    const vh = mapShell.clientHeight;
+    const maxX = Math.max(0, worldW - vw);
+    const maxY = Math.max(0, worldH - vh);
+    panX = Math.min(Math.max(panX, 0), maxX);
+    panY = Math.min(Math.max(panY, 0), maxY);
+}
+
+function applyPan() {
+    clampPan();
+    mapWorld.style.transform = `translate(${-panX}px, ${-panY}px)`;
+}
+
+function centerCameraOn(worldX, worldY) {
+    const vw = mapShell.clientWidth;
+    const vh = mapShell.clientHeight;
+    panX = worldX - vw / 2;
+    panY = worldY - vh / 2;
+    applyPan();
+}
+
+function placePlayer(worldX, worldY) {
+    player.style.left = worldX + "px";
+    player.style.top = worldY + "px";
+}
+
+// ---------- 진행도 / 인벤토리 ----------
 function setDialogue(text) {
     dialogue.innerHTML = text;
 }
@@ -107,10 +176,9 @@ function setDialogue(text) {
 function renderInventory() {
     inventoryBox.innerHTML = "";
     inventory.forEach(itemId => {
-        const item = ITEM_DB[itemId];
         const el = document.createElement("div");
         el.className = "inventory-item";
-        el.textContent = item.name;
+        el.textContent = ITEM_DB[itemId].name;
         inventoryBox.appendChild(el);
     });
 }
@@ -132,102 +200,128 @@ function completeProgress(taskId) {
     }
 }
 
-function addItem(itemId) {
-    inventory.push(itemId);
-    renderInventory();
-}
-
+function addItem(itemId) { inventory.push(itemId); renderInventory(); }
 function removeItem(itemId) {
     const idx = inventory.indexOf(itemId);
     if (idx !== -1) inventory.splice(idx, 1);
     renderInventory();
 }
+function hasItem(itemId) { return inventory.includes(itemId); }
 
-function hasItem(itemId) {
-    return inventory.includes(itemId);
+// ---------- 포인트(이동/조사) 렌더링 & 클릭 ----------
+function createPointEl(data, extraClass) {
+    const el = document.createElement("div");
+    el.className = ("point " + (extraClass || "")).trim();
+    const pos = pctToWorldPx(data.xPct, data.yPct);
+    const size = pctToWorldPx(data.wPct, data.hPct);
+    el.style.left = pos.x + "px";
+    el.style.top = pos.y + "px";
+    el.style.width = size.x + "px";
+    el.style.height = size.y + "px";
+    return el;
 }
 
-// 현재 위치의 상호작용 포인트들을 map-stage 위에 그린다.
-function renderInteractionPoints(zoneId) {
-    // 이전 위치의 포인트 DOM 제거
+function renderPoints() {
     document.querySelectorAll(".point").forEach(el => el.remove());
+    const scene = SCENES[currentSceneId];
 
-    const zone = GAME_DATA[zoneId];
-    zone.points.forEach(point => {
-        const el = document.createElement("div");
-        el.className = "point" + (point.cleared ? " point-cleared" : "");
-        el.style.left = point.x + "px";
-        el.style.top = point.y + "px";
-        el.style.width = point.w + "px";
-        el.style.height = point.h + "px";
+    scene.travelPoints.forEach(tp => {
+        const el = createPointEl(tp, "point-travel");
+        el.onclick = () => enterTravelPoint(tp);
+        mapWorld.appendChild(el);
+    });
 
-        el.onclick = () => handlePointClick(zoneId, point);
-
-        mapStage.appendChild(el);
+    scene.points.forEach(p => {
+        const el = createPointEl(p, p.cleared ? "point-cleared" : "");
+        el.onclick = () => handlePointClick(p);
+        mapWorld.appendChild(el);
     });
 }
 
-// ---------- 클릭 핸들러 ----------
-
-function enterZone(zoneId) {
-    const zone = GAME_DATA[zoneId];
-    currentZoneId = zoneId;
-
-    player.style.left = zone.playerPos.x + "px";
-    player.style.top = zone.playerPos.y + "px";
-
-    setDialogue(zone.enterText);
-    locationText.innerHTML = zone.name;
-
-    renderInteractionPoints(zoneId);
+function enterTravelPoint(tp) {
+    locationText.innerHTML = tp.name;
+    setDialogue(tp.enterText);
+    const pos = pctToWorldPx(tp.xPct, tp.yPct);
+    placePlayer(pos.x, pos.y);
+    centerCameraOn(pos.x, pos.y);
 }
 
-function handlePointClick(zoneId, point) {
-    // 이미 클리어한 포인트는 안내 대사만 다시 보여줌
+function handlePointClick(point) {
     if (point.cleared) {
         setDialogue(point.clearedText || point.text);
         return;
     }
-
-    // 아이템이 필요한 포인트인데 아이템이 없는 경우 -> 잠김
     if (point.requiresItem && !hasItem(point.requiresItem)) {
         setDialogue(point.lockedText || "지금은 무언가 부족한 것 같다.");
         return;
     }
 
-    // 조건 충족 -> 클리어 처리
     point.cleared = true;
-
-    // 아이템 소모
-    if (point.requiresItem && point.consumesItem) {
-        removeItem(point.requiresItem);
-    }
-
-    // 아이템 지급
-    if (point.givesItem) {
-        addItem(point.givesItem);
-    }
-
-    // 진행도 갱신
-    if (point.progressTaskId) {
-        completeProgress(point.progressTaskId);
-    }
+    if (point.requiresItem && point.consumesItem) removeItem(point.requiresItem);
+    if (point.givesItem) addItem(point.givesItem);
+    if (point.progressTaskId) completeProgress(point.progressTaskId);
 
     setDialogue(point.text);
-
-    // 포인트 스타일 갱신 (클리어 표시)
-    renderInteractionPoints(zoneId);
+    renderPoints();
 }
 
-// ---------- zone(위치 이동) 클릭 이벤트 등록 ----------
+// ---------- 입력: WASD + 가장자리 자동 스크롤 ----------
+window.addEventListener("keydown", e => {
+    const k = e.key.toLowerCase();
+    if (["w", "a", "s", "d"].includes(k)) keysDown.add(k);
+});
+window.addEventListener("keyup", e => {
+    keysDown.delete(e.key.toLowerCase());
+});
 
-Object.keys(GAME_DATA).forEach(zoneId => {
-    const el = document.getElementById(zoneId);
-    if (el) {
-        el.onclick = () => enterZone(zoneId);
+mapShell.addEventListener("mousemove", e => {
+    const rect = mapShell.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    let vx = 0, vy = 0;
+    if (x < EDGE_ZONE) vx = -1;
+    else if (x > rect.width - EDGE_ZONE) vx = 1;
+    if (y < EDGE_ZONE) vy = -1;
+    else if (y > rect.height - EDGE_ZONE) vy = 1;
+    mouseEdgeVec = { x: vx, y: vy };
+});
+mapShell.addEventListener("mouseleave", () => { mouseEdgeVec = { x: 0, y: 0 }; });
+
+function tick(now) {
+    if (lastTime == null) lastTime = now;
+    const dt = (now - lastTime) / 1000;
+    lastTime = now;
+
+    // WASD 우선, 키 입력 없으면 가장자리 자동 스크롤 적용
+    let dx = 0, dy = 0;
+    if (keysDown.has("a")) dx -= 1;
+    if (keysDown.has("d")) dx += 1;
+    if (keysDown.has("w")) dy -= 1;
+    if (keysDown.has("s")) dy += 1;
+
+    if (dx === 0 && dy === 0) {
+        dx = mouseEdgeVec.x;
+        dy = mouseEdgeVec.y;
     }
+
+    if (dx !== 0 || dy !== 0) {
+        const len = Math.hypot(dx, dy) || 1;
+        panX += (dx / len) * PAN_SPEED * dt;
+        panY += (dy / len) * PAN_SPEED * dt;
+        applyPan();
+    }
+
+    requestAnimationFrame(tick);
+}
+
+window.addEventListener("resize", () => {
+    fitWorldToViewport();
+    renderPoints();
+    applyPan();
 });
 
 // ---------- 초기화 ----------
 renderProgress();
 renderInventory();
+loadScene("school");
+requestAnimationFrame(tick);
