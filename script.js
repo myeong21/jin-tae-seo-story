@@ -1,11 +1,5 @@
 /* =========================================================
-   진태서 스토리 - 게임 로직 (카메라 패닝 지원 버전)
-
-   구조:
-   - #map-shell : 화면에 보이는 고정 크기 뷰포트
-   - #map-world : 실제 이미지+포인트가 놓인 큰 판. transform으로 이동시켜 카메라 구현
-   - 모든 좌표(포인트, 스폰 위치)는 이미지 기준 %(0~100)로 저장
-     -> 이미지가 세로형/가로형 등 뭐든 상관없이 항상 같은 상대 위치에 배치됨
+   진태서 스토리 - 게임 로직 (카메라 패닝 버전)
    ========================================================= */
 
 // ---------- DOM 참조 ----------
@@ -17,7 +11,7 @@ const dialogue = document.getElementById("text");
 const locationText = document.getElementById("location");
 const inventoryBox = document.querySelector(".inventory");
 
-// ---------- 진행도(퀘스트) 데이터 ----------
+// ---------- 진행도 데이터 ----------
 const progressTasks = [
     { id: "bench_key",  name: "벤치 아래 확인",   cleared: false },
     { id: "pond_clue",  name: "연못가 흔적 조사", cleared: false },
@@ -31,27 +25,23 @@ const ITEM_DB = {
     key: { id: "key", name: "낡은 열쇠" }
 };
 
-// ---------- 씬(장소) 데이터 ----------
-// 이미지가 바뀌는 장소(운동장/본관/교실 등)가 늘어나면 여기에 씬을 추가하면 됨.
-// xPct/yPct/wPct/hPct 전부 해당 씬 이미지 기준 0~100 퍼센트.
+// ---------- 씬 데이터 (좌표는 전부 이미지 기준 % , 0~100) ----------
 const SCENES = {
     school: {
         image: "images/school.png",
-        spawnPct: { x: 50, y: 90 },
+        spawnPct: { x: 50, y: 95 },
 
-        // 클릭하면 카메라+플레이어가 그 위치로 이동하는 '이동 지점'
         travelPoints: [
-            { id: "zone1", name: "운동장", xPct: 33, yPct: 68, wPct: 20, hPct: 12, enterText: "운동장이다." },
-            { id: "zone2", name: "연못",   xPct: 63, yPct: 16, wPct: 16, hPct: 10, enterText: "연못이다." },
-            { id: "zone3", name: "본관",   xPct: 36, yPct: 36, wPct: 16, hPct: 10, enterText: "본관으로 들어갈 수 있을 것 같다." },
-            { id: "zone4", name: "???",    xPct: 80, yPct: 58, wPct: 18, hPct: 12, enterText: "아직 갈 수 없는 장소다." }
+            { id: "zone1", name: "운동장", xPct: 30, yPct: 66, wPct: 22, hPct: 12, enterText: "운동장이다." },
+            { id: "zone2", name: "연못",   xPct: 68, yPct: 15, wPct: 20, hPct: 10, enterText: "연못이다." },
+            { id: "zone3", name: "본관",   xPct: 30, yPct: 33, wPct: 18, hPct: 10, enterText: "본관으로 들어갈 수 있을 것 같다." },
+            { id: "zone4", name: "???",    xPct: 78, yPct: 60, wPct: 16, hPct: 10, enterText: "아직 갈 수 없는 장소다." }
         ],
 
-        // 클릭하면 대사/아이템/진행도가 갱신되는 '조사 지점'
         points: [
             {
                 id: "bench",
-                xPct: 15, yPct: 12, wPct: 8, hPct: 5,
+                xPct: 10, yPct: 8, wPct: 8, hPct: 4,
                 progressTaskId: "bench_key",
                 text: "벤치 아래에서 낡은 열쇠를 발견했다.",
                 clearedText: "이미 확인한 벤치다.",
@@ -59,21 +49,21 @@ const SCENES = {
             },
             {
                 id: "pond_edge",
-                xPct: 60, yPct: 20, wPct: 8, hPct: 5,
+                xPct: 63, yPct: 18, wPct: 8, hPct: 4,
                 progressTaskId: "pond_clue",
                 text: "물가에서 이상한 발자국을 발견했다.",
                 clearedText: "이미 조사한 흔적이다."
             },
             {
                 id: "locker",
-                xPct: 33, yPct: 33, wPct: 8, hPct: 5,
+                xPct: 22, yPct: 30, wPct: 8, hPct: 4,
                 progressTaskId: "locker",
                 text: "사물함 안에는 별다른 게 없었다.",
                 clearedText: "이미 조사한 사물함이다."
             },
             {
                 id: "front_door",
-                xPct: 40, yPct: 33, wPct: 8, hPct: 5,
+                xPct: 34, yPct: 30, wPct: 8, hPct: 4,
                 progressTaskId: "front_door",
                 requiresItem: "key",
                 consumesItem: true,
@@ -86,13 +76,13 @@ const SCENES = {
 };
 
 // ---------- 카메라/월드 상태 ----------
-let currentSceneId = "school";
-let naturalW = 0, naturalH = 0;   // 원본 이미지 픽셀 크기
-let worldW = 0, worldH = 0;       // 뷰포트를 덮도록 확대된 실제 렌더 크기
+let currentSceneId = null;
+let naturalW = 0, naturalH = 0;
+let worldW = 0, worldH = 0;
 let panX = 0, panY = 0;
 
-const PAN_SPEED = 480;  // px/초 (WASD, 가장자리 스크롤 공통 속도)
-const EDGE_ZONE = 48;   // 가장자리 자동 스크롤 감지 범위(px)
+const PAN_SPEED = 480;
+const EDGE_ZONE = 48;
 
 const keysDown = new Set();
 let mouseEdgeVec = { x: 0, y: 0 };
@@ -125,7 +115,6 @@ function loadScene(sceneId) {
     mapImg.src = scene.image;
 }
 
-// 뷰포트를 여백 없이 채우도록 이미지를 확대(cover)
 function fitWorldToViewport() {
     const vw = mapShell.clientWidth;
     const vh = mapShell.clientHeight;
@@ -169,9 +158,7 @@ function placePlayer(worldX, worldY) {
 }
 
 // ---------- 진행도 / 인벤토리 ----------
-function setDialogue(text) {
-    dialogue.innerHTML = text;
-}
+function setDialogue(text) { dialogue.innerHTML = text; }
 
 function renderInventory() {
     inventoryBox.innerHTML = "";
@@ -208,7 +195,7 @@ function removeItem(itemId) {
 }
 function hasItem(itemId) { return inventory.includes(itemId); }
 
-// ---------- 포인트(이동/조사) 렌더링 & 클릭 ----------
+// ---------- 포인트 렌더링 & 클릭 ----------
 function createPointEl(data, extraClass) {
     const el = document.createElement("div");
     el.className = ("point " + (extraClass || "")).trim();
@@ -292,7 +279,6 @@ function tick(now) {
     const dt = (now - lastTime) / 1000;
     lastTime = now;
 
-    // WASD 우선, 키 입력 없으면 가장자리 자동 스크롤 적용
     let dx = 0, dy = 0;
     if (keysDown.has("a")) dx -= 1;
     if (keysDown.has("d")) dx += 1;
@@ -315,9 +301,11 @@ function tick(now) {
 }
 
 window.addEventListener("resize", () => {
-    fitWorldToViewport();
-    renderPoints();
-    applyPan();
+    if (naturalW && naturalH) {
+        fitWorldToViewport();
+        renderPoints();
+        applyPan();
+    }
 });
 
 // ---------- 초기화 ----------

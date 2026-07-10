@@ -1,362 +1,216 @@
-body{ background: red !important; }
-
 *{
     margin:0;
     padding:0;
     box-sizing:border-box;
 }
 
+html, body{
+    height:100%;
+}
+
 body{
-
-    margin:0;
-
     background:#202020;
-
     color:white;
-
     font-family:Arial;
-
     display:flex;
-
     justify-content:center;
-
     align-items:center;
-
     min-height:100vh;
-
     overflow:auto;
 }
 
-header{
-
-    height:70px;
-
+#game{
+    width:1280px;
+    height:720px;
+    background:#1b1b1b;
     display:flex;
+    flex-direction:column;
+    box-shadow:0 0 30px rgba(0,0,0,.6);
+    border:3px solid #444;
+}
 
+header{
+    height:70px;
+    flex-shrink:0;
+    display:flex;
     justify-content:center;
-
     align-items:center;
-
     background:#111;
-
     border-bottom:2px solid #444;
 }
 
+/* ---------- 본문 영역 ---------- */
+
 #game-container{
-
+    flex:1;
+    min-height:0;
     display:flex;
-
-    width:1280px;
-
-    height:540px;
 }
 
 #main-panel{
-
     flex:4;
-
-    display:flex;
-
-    flex-direction:column;
-
     min-height:0;
+    display:flex;
+    flex-direction:column;
 }
 
+/* 화면에 실제로 보이는 고정 크기 창. 이 크기는 이미지와 무관하게 항상 동일 */
 #map-shell{
-
     flex:1;
-
     min-height:0;
-
     position:relative;
-
-    background:black;
-
+    background:#000;
     overflow:hidden;
 }
 
+/* 이미지+포인트가 실제로 놓이는 큰 판. JS가 크기를 잡고 transform으로 이동시킴 */
 #map-world{
-
     position:absolute;
-
     top:0;
-
     left:0;
-
-    will-change:transform;
 }
 
 #map-img{
-
     position:absolute;
-
     top:0;
-
     left:0;
-
     display:block;
-
     pointer-events:none;
-
     user-select:none;
 }
 
-#sidebar{
-
-    flex:1;
-
-    background:#2e2e2e;
-
-    padding:20px;
-
-    display:flex;
-
-    flex-direction:column;
-
-    gap:30px;
-}
-
-section{
-
-    border:2px solid #444;
-
-    background:#252525;
-
-    padding:12px;
-}
-
-#sidebar section:nth-child(1){
-
-    height:90px;
-}
-
-#sidebar section:nth-child(2){
-
-    height:220px;
-}
-
-#sidebar section:nth-child(3){
-
-    flex:1;
-}
-
-section h2{
-
-    border-bottom:1px solid #666;
-
-    margin-bottom:10px;
-
-    padding-bottom:8px;
-}
-
-section ul{
-
-    list-style:none;
-
-    padding-left:0;
-}
-
-section li{
-
-    margin:8px 0;
-}
-
-.inventory{
-
-    min-height:180px;
-
-    border:1px dashed #666;
-
-    margin-top:10px;
-}
-
-#sidebar h2{
-
-    margin-bottom:10px;
-}
-
-.inventory{
-
-    height:150px;
-
-    border:1px solid white;
-}
-
 #dialogue{
-
     height:180px;
-
+    flex-shrink:0;
     background:#111;
-
     padding:20px;
-
     border-top:2px solid #444;
 }
 
 #speaker{
-
     font-size:22px;
-
     font-weight:bold;
-
     margin-bottom:15px;
 }
 
 #text{
-
     font-size:20px;
 }
 
-#player{
+/* ---------- 사이드바 ---------- */
 
-    position:absolute;
-
-    width:18px;
-
-    height:18px;
-
-    background:black;
-
-    border:2px solid white;
-
-    border-radius:50%;
-
-    transition:.4s;
-
-    z-index:5;
-
-    margin-left:-9px;
-
-    margin-top:-9px;
+#sidebar{
+    flex:1;
+    min-height:0;
+    background:#2e2e2e;
+    padding:20px;
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+    overflow-y:auto;
 }
 
-.point{
+section{
+    border:2px solid #444;
+    background:#252525;
+    padding:12px;
+    flex-shrink:0;
+}
 
+#sidebar section:nth-child(2){
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+}
+
+#sidebar section:nth-child(3){
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+}
+
+section h2{
+    border-bottom:1px solid #666;
+    margin-bottom:10px;
+    padding-bottom:8px;
+}
+
+section ul{
+    list-style:none;
+}
+
+section li{
+    margin:8px 0;
+}
+
+.inventory{
+    min-height:60px;
+}
+
+.inventory-item{
+    background:#333;
+    border:1px solid #555;
+    border-radius:4px;
+    padding:6px 10px;
+    margin:4px 0;
+    font-size:14px;
+}
+
+#progress-list li.cleared{
+    color:#5ee87a;
+    font-weight:bold;
+}
+
+/* ---------- 플레이어 마커 ---------- */
+
+#player{
     position:absolute;
+    width:18px;
+    height:18px;
+    background:black;
+    border:2px solid white;
+    border-radius:50%;
+    transition:.4s;
+    z-index:5;
+    margin-left:-9px;
+    margin-top:-9px;
+    pointer-events:none;
+}
 
+/* ---------- 상호작용/이동 포인트 ---------- */
+
+.point{
+    position:absolute;
     border:2px dashed rgba(0,200,255,.7);
-
     background:rgba(0,200,255,.08);
-
     border-radius:6px;
-
     transition:.2s;
+    box-sizing:border-box;
 }
 
 .point:hover{
-
     border:2px solid #00e0ff;
-
     background:rgba(0,224,255,.2);
-
     cursor:pointer;
 }
 
 .point-travel{
-
     border:2px dashed rgba(255,220,80,.8);
-
     background:rgba(255,220,80,.08);
 }
 
 .point-travel:hover{
-
     border:2px solid #ffdc50;
-
     background:rgba(255,220,80,.2);
-
     cursor:pointer;
 }
 
 .point-cleared{
-
     border:2px dashed rgba(120,120,120,.6);
-
     background:rgba(120,120,120,.05);
 }
 
 .point-cleared:hover{
-
     border:2px solid #888;
-
     background:rgba(120,120,120,.15);
-}
-
-#game{
-
-    width:1280px;
-
-    height:720px;
-
-    background:#1b1b1b;
-
-    display:flex;
-
-    flex-direction:column;
-
-    box-shadow:0 0 30px rgba(0,0,0,.6);
-
-    border:3px solid #444;
-}
-
-/* 위치 진입 후 등장하는 상호작용 포인트 (사물함, 벤치, 문 등) */
-.point{
-
-    position:absolute;
-
-    border:2px dashed rgba(0,200,255,.7);
-
-    background:rgba(0,200,255,.08);
-
-    border-radius:6px;
-
-    transition:.2s;
-}
-
-.point:hover{
-
-    border:2px solid #00e0ff;
-
-    background:rgba(0,224,255,.2);
-
-    cursor:pointer;
-}
-
-/* 이미 클리어한 포인트는 흐릿하게 표시 */
-.point-cleared{
-
-    border:2px dashed rgba(120,120,120,.6);
-
-    background:rgba(120,120,120,.05);
-}
-
-.point-cleared:hover{
-
-    border:2px solid #888;
-
-    background:rgba(120,120,120,.15);
-}
-
-/* 인벤토리에 담긴 개별 아이템 */
-.inventory-item{
-
-    background:#333;
-
-    border:1px solid #555;
-
-    border-radius:4px;
-
-    padding:6px 10px;
-
-    margin:4px 0;
-
-    font-size:14px;
-}
-
-/* 완료된 진행도 항목 강조 */
-#progress-list li.cleared{
-
-    color:#5ee87a;
-
-    font-weight:bold;
 }
