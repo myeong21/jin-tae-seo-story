@@ -79,14 +79,49 @@ header{
     user-select:none;
 }
 
+/* 대사가 아직 남아있을 때 맵을 어둡게 덮어서 "대사창을 봐야 한다"는 걸 알려줌 */
+#map-overlay{
+    position:absolute;
+    top:0;
+    left:0;
+    right:0;
+    bottom:0;
+    background:#000;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .35s ease;
+    z-index:4;
+}
+
 #dialogue{
     height:180px;
     flex-shrink:0;
     background:#111;
-    padding:20px;
     border-top:2px solid #444;
     position:relative;
+    overflow:hidden;
+    cursor:default;
+}
+
+#dialogue.active{
     cursor:pointer;
+}
+
+#dialogue-inner{
+    position:absolute;
+    left:0;
+    right:0;
+    top:0;
+    padding:20px;
+    box-sizing:border-box;
+    transform:translateY(100%);
+    opacity:0;
+    transition:transform .35s ease, opacity .35s ease;
+}
+
+#dialogue.active #dialogue-inner{
+    transform:translateY(0);
+    opacity:1;
 }
 
 #speaker{
@@ -97,6 +132,7 @@ header{
 
 #text{
     font-size:20px;
+    white-space:pre-wrap;
 }
 
 #dialogue-next{
